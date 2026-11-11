@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>수술기록</title>
+<style>
+:root{
+  --bg:#f3f4f6;--card:#ffffff;--text:#16191d;--muted:#667085;--line:#dfe3e8;
+  --accent:#1d5fc4;--accent-ink:#ffffff;--soft:#eaf1fc;--danger:#c23a2b;--rec:#e0312b;
+  --field:#fbfbfc;--shadow:0 1px 2px rgba(16,24,40,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115;--card:#181b21;--text:#e8eaed;--muted:#9aa3af;--line:#2b3038;
+    --accent:#5b9bff;--accent-ink:#0b1220;--soft:#1b2638;--danger:#ff7a6b;--rec:#ff5b52;
+    --field:#13161b;--shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115;--card:#181b21;--text:#e8eaed;--muted:#9aa3af;--line:#2b3038;
+  --accent:#5b9bff;--accent-ink:#0b1220;--soft:#1b2638;--danger:#ff7a6b;--rec:#ff5b52;
+  --field:#13161b;--shadow:none;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font:16px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
+  -webkit-text-size-adjust:100%}
+body{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:12px 16px 8px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line)}
+header h1{font-size:18px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--soft);color:var(--accent)}
+main{max-width:680px;margin:0 auto;padding:12px 16px}
+.view{display:none}.view.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:var(--shadow)}
+.card h2{font-size:14px;margin:0 0 10px;color:var(--muted);font-weight:600;letter-spacing:.02em}
+.field{margin-bottom:12px}.field:last-child{margin-bottom:0}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+input,textarea,select{width:100%;font:inherit;color:var(--text);background:var(--field);border:1px solid var(--line);border-radius:10px;padding:10px 12px;outline:none}
+input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--soft)}
+textarea{resize:vertical;min-height:64px}
+#f-procedure{min-height:220px;font-size:15px}
+.inwrap{position:relative}
+.inwrap input,.inwrap textarea{padding-right:50px}
+.mic{position:absolute;right:6px;top:6px;width:38px;height:38px;border-radius:10px;border:0;background:var(--soft);color:var(--accent);display:grid;place-items:center;cursor:pointer}
+.mic svg{width:20px;height:20px}
+.mic.on{background:var(--rec);color:#fff;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(224,49,43,.45)}50%{box-shadow:0 0 0 8px rgba(224,49,43,0)}}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{flex:1;border:0;background:var(--field);color:var(--text);font:inherit;padding:10px 0;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font:inherit;font-size:15px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--text);padding:9px 14px;cursor:pointer;text-decoration:none}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.danger{color:var(--danger);border-color:var(--danger)}
+.btn.small{font-size:13px;padding:6px 10px}
+.btn:disabled{opacity:.55}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.quick textarea{min-height:84px}
+.bigmic{width:100%;height:56px;border-radius:12px;border:0;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;margin-bottom:8px}
+.bigmic svg{width:22px;height:22px}
+.bigmic.on{background:var(--rec);color:#fff}
+.hint{font-size:12.5px;color:var(--muted);margin:6px 0 0}
+.savebar{position:sticky;bottom:calc(64px + env(safe-area-inset-bottom));display:flex;gap:8px;padding:10px 0;background:linear-gradient(to top,var(--bg) 70%,transparent)}
+.savebar .btn{flex:1;height:48px}
+.savebar .btn.primary{flex:2}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--card);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;height:60px;border:0;background:none;color:var(--muted);font:inherit;font-size:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer}
+nav button svg{width:22px;height:22px}
+nav button.on{color:var(--accent);font-weight:600}
+.att{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;margin-top:10px}
+.tile{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--soft);border:1px solid var(--line);display:grid;place-items:center;font-size:12px;color:var(--muted);text-align:center}
+.tile img{width:100%;height:100%;object-fit:cover;display:block}
+.tile a{position:absolute;inset:0}
+.tile .x{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:15px;line-height:26px;cursor:pointer;z-index:2}
+.tile .spin{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:rot 1s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;text-align:left;font:inherit;color:var(--text);width:100%}
+.item .t{font-weight:600;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.item .t small{font-weight:400;color:var(--muted)}
+.item .s{font-size:14px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.muted{color:var(--muted)}
+.empty{text-align:center;color:var(--muted);padding:32px 0}
+.toast{position:fixed;left:50%;bottom:calc(140px + env(safe-area-inset-bottom));transform:translateX(-50%);max-width:min(92vw,560px);background:#1f2937;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:30;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.on{opacity:1}
+.modal{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center}
+.modal.on{display:flex}
+.sheet{background:var(--card);width:100%;max-width:680px;max-height:88vh;overflow:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+.sheet h3{margin:0 0 12px;font-size:17px}
+.tplitem{display:block;width:100%;text-align:left;background:var(--field);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;font:inherit;color:var(--text);cursor:pointer}
+.tplitem b{display:block;font-size:15px}
+.tplitem span{display:block;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.links a{display:block;padding:10px 0;color:var(--accent);text-decoration:none;border-bottom:1px solid var(--line)}
+.links a:last-child{border-bottom:0}
+ul.tips{margin:0;padding-left:18px;font-size:14px}
+ul.tips li{margin-bottom:6px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="title">새 수술기록</h1>
+  <span class="pill" id="status" hidden></span>
+  <span class="pill" title="화면 코드 버전">v7</span>
+</header>
+
+<main>
+  <!-- ─────────── 기록 작성 ─────────── -->
+  <section class="view on" id="v-edit">
+    <div class="card quick">
+      <h2>빠른 음성 입력</h2>
+      <button class="bigmic" id="quickMic" data-for="quick" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg><span id="quickMicLabel">눌러서 말하기</span></button>
+      <textarea id="quick" placeholder="예) 환자명 홍길동 등록번호 12345678 남자 65세 진단명 요추관 협착증 수술명 L4-5 후방 감압술 주요 수술 요추 후방 감압술"></textarea>
+      <div class="btns">
+        <button class="btn primary small" id="parseBtn" type="button">항목에 채우기</button>
+        <button class="btn small" id="quickClear" type="button">지우기</button>
+      </div>
+      <p class="hint">항목 이름(환자명·등록번호·나이·진단명·수술명·주요 수술·특이사항)을 말하고 내용을 이어서 말하면 각 칸에 나눠 들어갑니다. 주요 수술명이 상용문구와 맞으면 수술과정도 자동으로 채워집니다.</p>
+    </div>
+
+    <div class="card">
+      <h2>환자 정보</h2>
+      <div class="grid2">
+        <div class="field"><label for="f-date">수술일</label><input type="date" id="f-date" data-k="date"></div>
+        <div class="field"><label for="f-regNo">등록번호</label>
+          <div class="inwrap"><input id="f-regNo" data-k="regNo" inputmode="numeric" autocomplete="off"><button class="mic" data-for="f-regNo" type="button" aria-label="등록번호 음성 입력"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg></button></div></div>
+      </div>
+      <div class="field"><label for="f-patientName">환자명</label>
+        <div class="inwrap"><input id="f-patientName" data-k="patientName" autocomplete="off"><button class="mic" data-for="f-patientName" type="button" aria-label="환자명 음성 입력"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg></button></div></div>
+      <div class="grid2">
+        <div class="field"><label>성별</label>
+          <div class="seg" id="f-sex"><button type="button" data-v="남">남</button><button type="button" data-v="여">여</button></div></div>
+        <div class="field"><label for="f-age">나이</label><input id="f-age" data-k="age" inputmode="numeric" autocomplete="off"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>진단 및 수술</h2>
+      <div class="field"><label for="f-diagnosis">진단명</label>
+        <div class="inwrap"><textarea id="f-diagnosis" data-k="diagnosis" rows="2"></textarea><button class="mic" data-for="f-diagnosis" type="button" aria-label="진단명 음성 입력"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg></button></div></div>
+      <div class="field"><label for="f-opName">수술명</label>
+        <div class="inwrap"><textarea id="f-opName" data-k="opName" rows="2"></textarea><button class="mic" data-for="f-opName" type="button" aria-label="수술명 음성 입력"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg></button></div></div>
+      <div class="field"><label for="f-mainOp">주요 수술명</label>
+        <div class="inwrap"><input id="f-mainOp" data-k="mainOp" list="tplNames" autocomplete="off"><button class="mic" data-for="f-mainOp" type="button" aria-label="주요 수술명 음성 입력"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg></button></div>
+        <datalist id="tplNames"></datalist></div>
+    </div>
+
+    <div class="card">
+      <h2>수술과정</h2>
+      <div class="field">
+        <div class="inwrap"><textarea id="f-procedure" data-k="procedure" placeholder="상용문구를 불러온 뒤 환자에 맞게 고치거나, 음성으로 받아쓰세요. '줄바꿈', '마침표', '쉼표'라고 말하면 기호로 바뀝니다."></textarea><button class="mic" data-for="f-procedure" type="button" aria-label="수술과정 음성 입력"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg></button></div>
+      </div>
+      <div class="btns">
+        <button class="btn small" id="tplPick" type="button">상용문구 불러오기</button>
+        <button class="btn small" id="tplFromProc" type="button">이 내용을 상용문구로 저장</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>특이사항</h2>
+      <div class="inwrap"><textarea id="f-notes" data-k="notes" rows="2" placeholder="합병증, 출혈량, 수술 후 지시 등"></textarea><button class="mic" data-for="f-notes" type="button" aria-label="특이사항 음성 입력"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg></button></div>
+    </div>
+
+    <div class="card">
+      <h2>사진 · 영상</h2>
+      <div class="btns" style="margin-top:0">
+        <label class="btn small" style="margin:0">카메라 촬영<input type="file" accept="image/*" capture="environment" hidden id="camIn"></label>
+        <label class="btn small" style="margin:0">앨범에서 선택<input type="file" accept="image/*,video/*" multiple hidden id="galIn"></label>
+      </div>
+      <div class="att" id="att"></div>
+      <p class="hint">사진은 자동으로 줄여서 올립니다. 영상은 20MB 이하만 가능하니, 긴 영상은 주요 장면을 캡처한 사진으로 올리세요. 첨부 후 <b>저장</b>을 눌러야 엑셀에 링크가 들어갑니다.</p>
+    </div>
+
+    <div class="savebar">
+      <button class="btn" id="newBtn" type="button">새 기록</button>
+      <button class="btn primary" id="saveBtn" type="button">저장</button>
+    </div>
+    <div class="btns" style="justify-content:flex-end;margin-bottom:12px">
+      <button class="btn small danger" id="delBtn" type="button" hidden>이 기록 삭제</button>
+    </div>
+  </section>
+
+  <!-- ─────────── 목록 ─────────── -->
+  <section class="view" id="v-list">
+    <div class="card" style="padding:10px">
+      <input id="search" type="search" placeholder="환자명 · 등록번호 · 진단명 · 수술명 검색">
+    </div>
+    <div class="list" id="list"></div>
+  </section>
+
+  <!-- ─────────── 상용문구 ─────────── -->
+  <section class="view" id="v-tpl">
+    <div class="btns" style="margin:0 0 12px"><button class="btn primary" id="tplNew" type="button">+ 새 상용문구</button></div>
+    <div id="tplList"></div>
+    <p class="hint">주요 수술마다 수술과정을 정리해 두면, 기록할 때 불러와서 고치기만 하면 됩니다. 환자마다 바뀌는 곳은 [ ] 로 표시해 두면 찾기 쉽습니다.</p>
+  </section>
+
+  <!-- ─────────── 설정 ─────────── -->
+  <section class="view" id="v-set">
+    <div class="card" id="connCard">
+      <h2>서버 연결</h2>
+      <p class="muted" id="connState" style="margin:0 0 10px"></p>
+      <div class="field">
+        <label for="c-url">서버 주소 (Apps Script 웹 앱 URL)</label>
+        <input id="c-url" type="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
+      </div>
+      <div class="field">
+        <label for="c-key">접속 키</label>
+        <input id="c-key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="setup 실행 로그의 접속 키">
+      </div>
+      <div class="btns">
+        <button class="btn primary small" id="connSave" type="button">연결하기</button>
+        <button class="btn small" id="connLink" type="button">휴대폰용 설정 링크 복사</button>
+      </div>
+      <p class="hint">설정 링크에는 접속 키가 들어 있습니다. 본인 휴대폰으로만 보내고(AirDrop·나에게 보내기), 다른 사람에게 보이지 않게 하세요.</p>
+    </div>
+    <div class="card">
+      <h2>내 구글드라이브</h2>
+      <div class="links" id="links"><p class="muted">불러오는 중…</p></div>
+      <div class="btns"><button class="btn small" id="exportBtn" type="button">엑셀 지금 다시 만들기</button></div>
+    </div>
+    <div class="card">
+      <h2>음성 입력</h2>
+      <p id="srState" class="muted" style="margin:0 0 8px"></p>
+      <ul class="tips">
+        <li>마이크 버튼이 동작하지 않으면 키보드의 🎤 받아쓰기 버튼을 쓰세요. 모든 칸에서 됩니다.</li>
+        <li>여러 항목을 한 번에 말하려면 맨 위 <b>빠른 음성 입력</b>에 받아쓴 뒤 <b>항목에 채우기</b>를 누르세요.</li>
+        <li>수술과정을 받아쓸 때 “줄바꿈”, “마침표”, “쉼표”라고 말하면 기호로 바뀝니다.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button class="on" data-view="v-edit" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>작성</button>
+  <button data-view="v-list" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>목록</button>
+  <button data-view="v-tpl" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>상용문구</button>
+  <button data-view="v-set" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>설정</button>
+</nav>
+
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<div id="diag" style="display:none;position:fixed;left:0;right:0;top:0;z-index:50;background:#c23a2b;color:#fff;padding:12px 16px;font-size:14px;line-height:1.45"></div>
+<script>
+// 진단용 (구형 브라우저에서도 실행되도록 옛 문법만 사용)
+// 아래 본 코드가 실행되지 않으면 빨간 안내로 이유를 보여줌
+var APP_ERRORS = [];
+window.onerror = function (msg, src, line) {
+  APP_ERRORS.push(msg + (line ? ' (줄 ' + line + ')' : ''));
+  var t = document.getElementById('toast');
+  if (t) { t.textContent = '화면 오류: ' + msg; t.className = 'toast on'; }
+};
+setTimeout(function () {
+  if (window.APP_OK) return;
+  var d = document.getElementById('diag');
+  d.innerHTML = '<b>화면 코드가 실행되지 않았습니다.</b><br>' +
+    (APP_ERRORS.length ? '오류: ' + APP_ERRORS.join(' / ') + '<br>' : '') +
+    '기기: ' + navigator.userAgent + '<br>이 빨간 화면을 캡처해서 보내 주세요.';
+  d.style.display = 'block';
+}, 3000);
+</script>
+<script>
+/* ───────────── 공통 ───────────── */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const MIC_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg>';
+const FIELDS = ['date', 'regNo', 'patientName', 'sex', 'age', 'diagnosis', 'opName', 'mainOp', 'procedure', 'notes'];
+const DRAFT_KEY = 'opnote.draft.v1';
+const S = { id: null, saved: false, dirty: false, attachments: [], templates: [], links: {}, listLoaded: false };
+
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const errMsg = (e) => (e && e.message) ? e.message : String(e);
+const pad = (n) => String(n).padStart(2, '0');
+const ymd = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+
+function newId() {
+  const d = new Date();
+  return 'R' + String(d.getFullYear()).slice(2) + pad(d.getMonth() + 1) + pad(d.getDate()) +
+    pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()) + Math.random().toString(36).slice(2, 5);
+}
+
+let toastT;
+function toast(msg, ms = 2600) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms);
+}
+
+/* ───────────── 서버 연결 (구글 Apps Script) ───────────── */
+const CONF_KEY = 'opnote.conf.v1';
+const DEMO = location.protocol === 'file:';
+
+function getConf() {
+  try { return JSON.parse(localStorage.getItem(CONF_KEY)) || {}; } catch (e) { return {}; }
+}
+function setConf(c) {
+  try { localStorage.setItem(CONF_KEY, JSON.stringify(c)); return true; } catch (e) { return false; }
+}
+function hasConf() { const c = getConf(); return !!(c.url && c.key); }
+
+async function api(fn, ...args) {
+  if (DEMO) {
+    await new Promise((r) => setTimeout(r, 250));
+    return MOCK[fn](...args);
+  }
+  const c = getConf();
+  if (!c.url || !c.key) throw new Error('설정 탭에서 서버 주소와 접속 키를 먼저 입력하세요');
+  return callServer(c.url, c.key, fn, args);
+}
+
+async function callServer(url, key, fn, args) {
+  let res;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ key: key, fn: fn, args: args || [] }),
+    });
+  } catch (e) {
+    throw new Error('서버에 연결하지 못했습니다. 인터넷 연결과 서버 주소를 확인하세요');
+  }
+  const text = await res.text();
+  let j;
+  try { j = JSON.parse(text); } catch (e) {
+    throw new Error('서버 응답이 이상합니다. Apps Script 배포의 액세스 권한이 “모든 사용자”인지, 새 버전으로 배포했는지 확인하세요');
+  }
+  if (!j.ok) throw new Error(j.error || '서버 오류');
+  return j.data;
+}
+
+/* ───────────── 미리보기용 가짜 서버 (구글 밖에서 열 때만) ───────────── */
+const MOCK = (() => {
+  const recs = [];
+  let tpls = [
+    { id: 'T1', name: '(예시) 복강경 담낭절제술 Laparoscopic cholecystectomy', content: '1. Under general endotracheal anesthesia, the patient was placed in the supine position.\n2. A 12 mm umbilical port was inserted by open technique.' },
+    { id: 'T2', name: '(예시) 요추 후방 감압술 Lumbar posterior decompression', content: '1. Under general anesthesia, the patient was placed in the prone position.\n2. A midline skin incision was made over L[ ]-L[ ].' },
+  ];
+  const links = { folder: '#', sheet: '#', xlsx: '#', attach: '#' };
+  return {
+    getInit: () => ({ templates: tpls, links }),
+    listRecords: (q) => recs.filter((r) => !q || JSON.stringify(r).includes(q)).map((r) => ({ ...r, nAttach: 0 })),
+    getRecord: (id) => ({ ...recs.find((r) => r.id === id), attachments: [] }),
+    saveRecord: (r) => { const i = recs.findIndex((x) => x.id === r.id); i >= 0 ? (recs[i] = r) : recs.push(r); return { id: r.id, attachments: S.attachments, warning: '' }; },
+    deleteRecord: (id) => { const i = recs.findIndex((x) => x.id === id); if (i >= 0) recs.splice(i, 1); return {}; },
+    uploadAttachment: (id, f) => ({ id: 'F' + Math.random(), name: f.name, mimeType: f.mimeType, url: '#' }),
+    removeAttachment: () => true,
+    saveTemplate: (t) => { if (t.id) tpls = tpls.map((x) => x.id === t.id ? t : x); else tpls.push({ ...t, id: 'T' + Date.now() }); return { templates: tpls }; },
+    deleteTemplate: (id) => { tpls = tpls.filter((x) => x.id !== id); return { templates: tpls }; },
+    exportNow: () => links,
+  };
+})();
+
+/* ───────────── 탭 ───────────── */
+function showView(id) {
+  $$('.view').forEach((v) => v.classList.toggle('on', v.id === id));
+  $$('nav button').forEach((b) => b.classList.toggle('on', b.dataset.view === id));
+  window.scrollTo(0, 0);
+  if (id === 'v-list' && !S.listLoaded) loadList();
+}
+$$('nav button').forEach((b) => b.addEventListener('click', () => showView(b.dataset.view)));
+
+/* ───────────── 폼 ───────────── */
+function getForm() {
+  const r = {};
+  FIELDS.forEach((k) => {
+    if (k === 'sex') r.sex = (($('#f-sex button.on') || {}).dataset || {}).v || '';
+    else r[k] = $('#f-' + k).value.trim();
+  });
+  return r;
+}
+
+function setForm(r) {
+  FIELDS.forEach((k) => {
+    if (k === 'sex') setSex(r.sex || '');
+    else { const el = $('#f-' + k); el.value = r[k] || ''; autoGrow(el); }
+  });
+}
+
+function setSex(v) {
+  $$('#f-sex button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
+}
+
+function newForm(keepDraft) {
+  S.id = newId(); S.saved = false; S.dirty = false; S.attachments = [];
+  setForm({ date: ymd(new Date()) });
+  $('#quick').value = '';
+  renderAtt(); updateHeader();
+  if (!keepDraft) clearDraft();
+}
+
+function updateHeader() {
+  const r = getForm();
+  $('#title').textContent = S.saved ? ((r.patientName || r.regNo || '수술기록') + ' · ' + (r.date || '')) : '새 수술기록';
+  const st = $('#status');
+  st.hidden = !S.dirty;
+  st.textContent = '저장 안 됨';
+  $('#delBtn').hidden = !S.saved;
+}
+
+function markDirty() { S.dirty = true; updateHeader(); saveDraftSoon(); }
+
+function confirmDiscard() {
+  return !S.dirty || confirm('저장하지 않은 내용이 있습니다. 버리고 계속할까요?');
+}
+
+$$('[data-k]').forEach((el) => el.addEventListener('input', () => { markDirty(); autoGrow(el); }));
+$$('#f-sex button').forEach((b) => b.addEventListener('click', () => {
+  setSex(b.classList.contains('on') ? '' : b.dataset.v); markDirty();
+}));
+$('#f-mainOp').addEventListener('change', () => offerTemplateFor($('#f-mainOp').value, false));
+
+function autoGrow(el) {
+  if (el.tagName !== 'TEXTAREA' || el.id === 'quick') return;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight + 2, 900) + 'px';
+}
+
+$('#newBtn').addEventListener('click', () => { if (confirmDiscard()) { newForm(); window.scrollTo(0, 0); } });
+
+$('#saveBtn').addEventListener('click', saveRecord);
+async function saveRecord() {
+  stopMic();
+  const r = getForm();
+  if (!r.patientName && !r.regNo) { toast('환자명이나 등록번호를 입력하세요'); return; }
+  if (S.attachments.some((a) => a.pending)) { toast('사진 업로드가 끝난 뒤 저장하세요'); return; }
+  r.id = S.id;
+  const btn = $('#saveBtn'); btn.disabled = true; btn.textContent = '저장 중…';
+  try {
+    const res = await api('saveRecord', r);
+    S.id = res.id; S.saved = true; S.dirty = false;
+    if (res.attachments) S.attachments = res.attachments;
+    renderAtt(); clearDraft(); S.listLoaded = false; updateHeader();
+    toast(res.warning ? '저장했습니다 (엑셀 갱신 실패: ' + res.warning + ')' : '저장했습니다 · 엑셀도 갱신됨', res.warning ? 6000 : 2600);
+  } catch (e) {
+    toast('저장 실패: ' + errMsg(e), 6000);
+  } finally {
+    btn.disabled = false; btn.textContent = '저장';
+  }
+}
+
+$('#delBtn').addEventListener('click', async () => {
+  if (!confirm('이 기록을 삭제할까요?\n첨부한 사진·영상 폴더는 구글드라이브 휴지통으로 이동합니다(30일 내 복구 가능).')) return;
+  try {
+    await api('deleteRecord', S.id);
+    S.listLoaded = false; S.dirty = false; newForm(); toast('삭제했습니다');
+  } catch (e) { toast('삭제 실패: ' + errMsg(e), 5000); }
+});
+
+/* ───────────── 임시 저장 (이 휴대폰에만) ───────────── */
+let draftT;
+function saveDraftSoon() {
+  clearTimeout(draftT);
+  draftT = setTimeout(() => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        id: S.id, saved: S.saved, form: getForm(),
+        attachments: S.attachments.filter((a) => !a.pending).map(({ preview, ...a }) => a),
+      }));
+    } catch (e) {}
+  }, 400);
+}
+function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch (e) {} }
+function restoreDraft() {
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch (e) {}
+  if (!d || !d.form) return;
+  const has = ['regNo', 'patientName', 'diagnosis', 'opName', 'procedure', 'notes'].some((k) => d.form[k]);
+  if (!has) return;
+  S.id = d.id || newId(); S.saved = !!d.saved; S.attachments = d.attachments || [];
+  setForm(d.form); renderAtt(); S.dirty = true; updateHeader();
+  toast('저장하지 않은 작성 중 기록을 불러왔습니다', 4000);
+}
+
+/* ───────────── 음성 입력 ───────────── */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, recBtn = null;
+
+$('#srState').textContent = SR
+  ? '이 브라우저는 마이크 버튼 음성인식을 지원합니다. 처음 누를 때 마이크 권한을 허용하세요.'
+  : '이 브라우저에서는 마이크 버튼 음성인식이 지원되지 않습니다. 키보드의 🎤 받아쓰기를 사용하세요.';
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('.mic, .bigmic');
+  if (b) toggleMic(b);
+});
+
+function spokenPunct(t) {
+  return t.replace(/\s*(줄\s?바꿈|다음\s?줄|새\s?줄|엔터)\s*/g, '\n')
+    .replace(/\s*마침표\s*/g, '. ')
+    .replace(/\s*쉼표\s*/g, ', ')
+    .replace(/ +\n/g, '\n');
+}
+
+function joinText(base, t, multiline) {
+  if (!base) return t;
+  if (!t) return base;
+  return base + (multiline ? (/\n$/.test(base) ? '' : ' ') : ' ') + t;
+}
+
+function keyboardHint(el, why) {
+  try { el.focus(); } catch (e) {}
+  toast('버튼 음성인식을 쓸 수 없습니다' + (why ? ' (' + why + ')' : '') +
+    '. 칸을 누른 뒤 키보드의 🎤 받아쓰기 버튼으로 말씀하세요.', 6000);
+}
+
+let micBlocked = false;
+
+function micUiOff(btn) {
+  if (!btn) return;
+  btn.classList.remove('on');
+  if (btn.id === 'quickMic') $('#quickMicLabel').textContent = '눌러서 말하기';
+}
+
+function stopMic() {
+  const r = rec, b = recBtn;
+  rec = null; recBtn = null;
+  micUiOff(b);
+  if (r) { try { r.stop(); } catch (e) {} try { r.abort(); } catch (e) {} }
+}
+
+function blockMic(el, why) {
+  micBlocked = true;
+  stopMic();
+  keyboardHint(el, why);
+}
+
+function toggleMic(btn) {
+  const el = document.getElementById(btn.dataset.for);
+  if (rec) { const same = recBtn === btn; stopMic(); if (same) return; }
+  if (micBlocked) {
+    try { el.focus(); } catch (e) {}
+    toast('키보드의 🎤 받아쓰기 버튼을 눌러 말씀하세요', 3000);
+    return;
+  }
+  if (!SR) { blockMic(el, '이 브라우저 미지원'); return; }
+  let r;
+  try { r = new SR(); } catch (err) { blockMic(el, errMsg(err)); return; }
+  r.lang = 'ko-KR'; r.interimResults = true; r.continuous = true;
+  const multiline = el.tagName === 'TEXTAREA';
+  const base = el.value;
+  let started = false, failed = false;
+  r.onstart = () => { started = true; toast('🎤 듣는 중… 말씀하세요. 끝나면 버튼을 다시 누르세요', 2500); };
+  setTimeout(() => {
+    if (!started && !failed && rec === r) { failed = true; blockMic(el, '마이크가 시작되지 않음'); }
+  }, 3000);
+  r.onresult = (e) => {
+    let t = '';
+    for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
+    t = multiline ? spokenPunct(t).trim() : t.trim();
+    if (el.id === 'f-regNo') t = t.replace(/[\s-]/g, '');
+    el.value = el.id === 'f-regNo' ? t : joinText(base, t, multiline);
+    autoGrow(el);
+    if (el.dataset.k) markDirty();
+  };
+  r.onerror = (e) => {
+    if (failed) return;
+    if (['not-allowed', 'service-not-allowed', 'audio-capture'].includes(e.error)) { failed = true; blockMic(el, '마이크 권한 차단: ' + e.error); return; }
+    if (rec === r) stopMic(); else micUiOff(btn);
+    if (e.error === 'no-speech') toast('소리가 들리지 않았습니다. 다시 눌러 말씀하세요');
+    else if (e.error !== 'aborted') toast('음성인식 오류: ' + e.error, 5000);
+  };
+  r.onend = () => {
+    if (rec === r) { rec = null; recBtn = null; }
+    micUiOff(btn);
+    if (el.id === 'f-mainOp') offerTemplateFor(el.value, false);
+  };
+  rec = r; recBtn = btn; btn.classList.add('on');
+  if (btn.id === 'quickMic') $('#quickMicLabel').textContent = '듣는 중… 다 말했으면 누르세요';
+  try { r.start(); } catch (err) { failed = true; blockMic(el, errMsg(err)); }
+}
+
+/* ───────────── 빠른 음성 입력 → 항목 나누기 ───────────── */
+const LABELS = {
+  date: ['수술 날짜', '수술날짜', '수술 일자', '수술일자', '수술일'],
+  regNo: ['등록 번호', '등록번호', '병록 번호', '병록번호', '차트 번호', '차트번호', '환자 번호', '환자번호'],
+  patientName: ['환자 이름', '환자이름', '환자 성명', '환자명', '성명', '이름'],
+  sex: ['성별'],
+  age: ['나이', '연령'],
+  diagnosis: ['진단명', '진단'],
+  mainOp: ['주요 수술명', '주요수술명', '주요 수술', '주요수술', '주 수술명', '주 수술', '주수술', '술식'],
+  opName: ['수술 이름', '수술명', '수술 명'],
+  procedure: ['수술 과정', '수술과정'],
+  notes: ['특이 사항', '특이사항', '메모', '비고'],
+};
+const LABEL_LIST = Object.entries(LABELS).flatMap(([k, arr]) => arr.map((a) => [a, k])).sort((a, b) => b[0].length - a[0].length);
+// 라벨 앞은 문장 시작 또는 공백·문장부호 (구형 iOS 호환을 위해 lookbehind 미사용)
+const LABEL_RE = new RegExp('(^|[\\s,.;:])(' + LABEL_LIST.map(([a]) => a.replace(/ /g, '\\s?')).join('|') + ')', 'g');
+const labelKey = (s) => { const n = s.replace(/\s/g, ''); const hit = LABEL_LIST.find(([a]) => a.replace(/\s/g, '') === n); return hit && hit[1]; };
+
+function cleanVal(v) {
+  return v.replace(/^\s*[:：,.\-]?\s*(?:(?:은|는|이|가|을|를)(?=\s))?\s*/, '').replace(/[\s,.;]+$/, '').trim();
+}
+
+function parseKoDate(s) {
+  const d = new Date();
+  if (/오늘/.test(s)) return ymd(d);
+  if (/어제/.test(s)) { d.setDate(d.getDate() - 1); return ymd(d); }
+  let m = s.match(/(\d{4})\s*[년.\-/]\s*(\d{1,2})\s*[월.\-/]\s*(\d{1,2})/);
+  if (m) return m[1] + '-' + pad(m[2]) + '-' + pad(m[3]);
+  m = s.match(/(\d{1,2})\s*(?:월|[.\-/])\s*(\d{1,2})/);
+  if (m) return d.getFullYear() + '-' + pad(m[1]) + '-' + pad(m[2]);
+  return '';
+}
+
+function normSex(s) { return /남/.test(s) ? '남' : /여/.test(s) ? '여' : ''; }
+
+function parseQuick(text) {
+  const out = {};
+  const marks = [];
+  let m;
+  LABEL_RE.lastIndex = 0;
+  while ((m = LABEL_RE.exec(text))) {
+    marks.push({ key: labelKey(m[2]), start: m.index + m[1].length, end: m.index + m[0].length });
+    if (m[0].length === 0) LABEL_RE.lastIndex++;
+  }
+  marks.forEach((mk, i) => {
+    const raw = text.slice(mk.end, i + 1 < marks.length ? marks[i + 1].start : text.length);
+    const v = cleanVal(raw);
+    if (!v || !mk.key) return;
+    if (mk.key === 'procedure' || mk.key === 'notes') out[mk.key] = (out[mk.key] ? out[mk.key] + '\n' : '') + spokenPunct(v);
+    else out[mk.key] = v;
+  });
+  // 라벨 없이 말한 성별·나이 ("남자 65세") — 수술과정/특이사항 앞부분에서만 찾기
+  const firstLong = marks.find((mk) => ['diagnosis', 'opName', 'mainOp', 'procedure', 'notes'].includes(mk.key));
+  const head = firstLong ? text.slice(0, firstLong.start) : text;
+  if (!out.sex) { const s = head.match(/(남자|남성|여자|여성)/); if (s) out.sex = s[1]; }
+  if (!out.age) { const a = head.match(/(\d{1,3})\s*(세|살)/); if (a) out.age = a[1]; }
+  // 정리
+  if (out.sex) out.sex = normSex(out.sex);
+  if (out.age) out.age = (out.age.match(/\d{1,3}/) || [''])[0];
+  // 등록번호: 앞쪽의 숫자·영문 부분만 (뒤에 이어 말한 "남자 65세" 등은 제외)
+  if (out.regNo) out.regNo = ((out.regNo.match(/^[A-Za-z0-9][A-Za-z0-9\s-]*/) || [''])[0]).replace(/[\s-]/g, '');
+  if (out.date) out.date = parseKoDate(out.date);
+  if (out.patientName) {
+    const tk = out.patientName.split(/[\s,.;]+/).filter(Boolean);
+    out.patientName = (tk[0] && tk[0].length === 1 && tk[1]) ? tk[0] + tk[1] : (tk[0] || '');
+  }
+  Object.keys(out).forEach((k) => { if (!out[k]) delete out[k]; });
+  return out;
+}
+
+$('#parseBtn').addEventListener('click', () => {
+  stopMic();
+  const text = $('#quick').value.trim();
+  if (!text) { toast('먼저 말하거나 입력하세요'); return; }
+  const p = parseQuick(text);
+  const keys = Object.keys(p);
+  if (!keys.length) { toast('항목 이름(환자명, 진단명 등)을 찾지 못했습니다'); return; }
+  keys.forEach((k) => {
+    if (k === 'sex') return setSex(p.sex);
+    const el = $('#f-' + k);
+    el.value = (k === 'procedure' || k === 'notes') ? joinText(el.value.trim(), p[k], true) : p[k];
+    autoGrow(el);
+  });
+  markDirty();
+  const names = { date: '수술일', regNo: '등록번호', patientName: '환자명', sex: '성별', age: '나이', diagnosis: '진단명', opName: '수술명', mainOp: '주요 수술명', procedure: '수술과정', notes: '특이사항' };
+  toast(keys.map((k) => names[k]).join(', ') + ' 입력됨');
+  if (p.mainOp) offerTemplateFor(p.mainOp, true);
+});
+$('#quickClear').addEventListener('click', () => { $('#quick').value = ''; });
+
+/* ───────────── 상용문구 ───────────── */
+const normName = (s) => String(s || '').replace(/\(예시\)/g, '').replace(/[\s()\-_.,]/g, '').toLowerCase();
+
+function matchTemplate(spoken) {
+  const n = normName(spoken);
+  if (n.length < 2) return null;
+  let best = null, bestScore = 0;
+  S.templates.forEach((t) => {
+    const tn = normName(t.name);
+    let score = 0;
+    if (tn === n) score = 1000;
+    else if (tn.includes(n)) score = n.length;
+    else if (n.includes(tn)) score = tn.length;
+    if (score > bestScore) { best = t; bestScore = score; }
+  });
+  return best;
+}
+
+function offerTemplateFor(name, auto) {
+  const t = matchTemplate(name);
+  if (!t) return;
+  const ta = $('#f-procedure');
+  // 수술과정이 비어 있을 때만 자동으로 채움 (이미 쓴 내용은 덮어쓰지 않음)
+  if (!ta.value.trim()) {
+    ta.value = t.content; autoGrow(ta); markDirty();
+    toast('상용문구 “' + t.name.replace('(예시) ', '') + '”를 수술과정에 넣었습니다', 3500);
+  }
+}
+
+function insertTemplate(t) {
+  const ta = $('#f-procedure');
+  const apply = (mode) => {
+    ta.value = mode === 'append' ? joinText(ta.value.replace(/\s+$/, ''), '\n' + t.content, true) : t.content;
+    if (!$('#f-mainOp').value.trim()) $('#f-mainOp').value = t.name.replace('(예시) ', '');
+    autoGrow(ta); markDirty(); closeModal();
+    toast('상용문구를 넣었습니다');
+  };
+  if (!ta.value.trim()) return apply('replace');
+  openModal(`<h3>수술과정에 이미 내용이 있습니다</h3>
+    <p class="muted" style="margin-top:0">“${esc(t.name)}” 상용문구를 어떻게 넣을까요?</p>
+    <div class="btns"><button class="btn primary" id="mAppend">뒤에 덧붙이기</button><button class="btn danger" id="mReplace">기존 내용 바꾸기</button><button class="btn" id="mCancel">취소</button></div>`);
+  $('#mAppend').onclick = () => apply('append');
+  $('#mReplace').onclick = () => apply('replace');
+  $('#mCancel').onclick = closeModal;
+}
+
+$('#tplPick').addEventListener('click', () => {
+  if (!S.templates.length) { toast('등록된 상용문구가 없습니다. 상용문구 탭에서 추가하세요'); return; }
+  openModal(`<h3>상용문구 불러오기</h3>
+    <input id="tplSearch" type="search" placeholder="수술명 검색" style="margin-bottom:10px">
+    <div id="tplPickList"></div>
+    <div class="btns"><button class="btn" id="mClose">닫기</button></div>`);
+  const draw = () => {
+    const q = normName($('#tplSearch').value);
+    $('#tplPickList').innerHTML = S.templates.filter((t) => !q || normName(t.name + t.content).includes(q))
+      .map((t) => `<button class="tplitem" data-id="${esc(t.id)}"><b>${esc(t.name)}</b><span>${esc(t.content.split('\n')[0])}</span></button>`).join('')
+      || '<p class="muted">찾는 상용문구가 없습니다</p>';
+  };
+  draw();
+  $('#tplSearch').oninput = draw;
+  $('#tplPickList').onclick = (e) => { const b = e.target.closest('.tplitem'); if (b) insertTemplate(S.templates.find((t) => t.id === b.dataset.id)); };
+  $('#mClose').onclick = closeModal;
+});
+
+$('#tplFromProc').addEventListener('click', () => {
+  const content = $('#f-procedure').value.trim();
+  if (!content) { toast('수술과정 내용이 없습니다'); return; }
+  const name = $('#f-mainOp').value.trim();
+  const existing = S.templates.find((t) => normName(t.name) === normName(name));
+  editTemplate(existing ? { ...existing, content } : { name, content }, !!existing);
+});
+
+$('#tplNew').addEventListener('click', () => editTemplate({ name: '', content: '' }));
+
+function renderTemplates() {
+  $('#tplNames').innerHTML = S.templates.map((t) => `<option value="${esc(t.name.replace('(예시) ', ''))}">`).join('');
+  $('#tplList').innerHTML = S.templates.length
+    ? S.templates.map((t) => `<button class="tplitem" data-id="${esc(t.id)}"><b>${esc(t.name)}</b><span>${esc(t.content.split('\n')[0])}</span></button>`).join('')
+    : '<p class="empty">등록된 상용문구가 없습니다</p>';
+}
+$('#tplList').addEventListener('click', (e) => {
+  const b = e.target.closest('.tplitem');
+  if (b) editTemplate(S.templates.find((t) => t.id === b.dataset.id));
+});
+
+function editTemplate(t, updatingExisting) {
+  openModal(`<h3>${t.id ? '상용문구 수정' : '새 상용문구'}</h3>
+    ${updatingExisting ? '<p class="hint" style="margin-top:0">같은 이름의 상용문구가 있어 현재 수술과정 내용으로 <b>업데이트</b>합니다.</p>' : ''}
+    <div class="field"><label for="tName">주요 수술명</label>
+      <div class="inwrap"><input id="tName" value="${esc(t.name)}" autocomplete="off"><button class="mic" data-for="tName" type="button" aria-label="음성 입력">${MIC_SVG}</button></div></div>
+    <div class="field"><label for="tContent">수술과정</label>
+      <div class="inwrap"><textarea id="tContent" style="min-height:260px">${esc(t.content)}</textarea><button class="mic" data-for="tContent" type="button" aria-label="음성 입력">${MIC_SVG}</button></div></div>
+    <div class="btns"><button class="btn primary" id="tSave">저장</button><button class="btn" id="tCancel">취소</button>
+      ${t.id ? '<button class="btn danger" id="tDel" style="margin-left:auto">삭제</button>' : ''}</div>`);
+  $('#tCancel').onclick = () => { stopMic(); closeModal(); };
+  $('#tSave').onclick = async () => {
+    stopMic();
+    const nt = { id: t.id, name: $('#tName').value.trim(), content: $('#tContent').value.trim() };
+    if (!nt.name) { toast('주요 수술명을 입력하세요'); return; }
+    $('#tSave').disabled = true; $('#tSave').textContent = '저장 중…';
+    try {
+      const res = await api('saveTemplate', nt);
+      S.templates = res.templates; renderTemplates(); closeModal();
+      toast(res.warning ? '저장했습니다 (엑셀 갱신 실패)' : '상용문구를 저장했습니다');
+    } catch (e) { toast('저장 실패: ' + errMsg(e), 5000); $('#tSave').disabled = false; $('#tSave').textContent = '저장'; }
+  };
+  if (t.id) $('#tDel').onclick = async () => {
+    if (!confirm('“' + t.name + '” 상용문구를 삭제할까요?')) return;
+    try { const res = await api('deleteTemplate', t.id); S.templates = res.templates; renderTemplates(); closeModal(); toast('삭제했습니다'); }
+    catch (e) { toast('삭제 실패: ' + errMsg(e), 5000); }
+  };
+}
+
+/* ───────────── 모달 ───────────── */
+function openModal(html) { $('#sheet').innerHTML = html; $('#modal').classList.add('on'); }
+function closeModal() { $('#modal').classList.remove('on'); $('#sheet').innerHTML = ''; }
+$('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal') { stopMic(); closeModal(); } });
+
+/* ───────────── 사진 · 영상 ───────────── */
+const MAX_VIDEO = 20 * 1024 * 1024;
+// 주의: 구글 서버가 코드 속 슬래시 두 개를 주석으로 오인해 지우므로, 'image/' 판별에 정규식 대신 indexOf 사용
+function isType(mime, kind) { return String(mime || '').indexOf(kind + '/') === 0; }
+
+function renderAtt() {
+  $('#att').innerHTML = S.attachments.map((a, i) => {
+    const isImg = isType(a.mimeType, 'image');
+    const src = a.preview || (isImg && a.id && !a.pending ? ('https:/' + '/drive.google.com/thumbnail?id=' + encodeURIComponent(a.id) + '&sz=w400') : '');
+    const inner = a.pending ? '<div class="spin"></div>'
+      : src ? `<img src="${esc(src)}" alt="${esc(a.name)}" loading="lazy" onerror="this.outerHTML='<div>🖼 사진</div>'">`
+      : `<div>${isType(a.mimeType, 'video') ? '🎬 영상' : '📄 파일'}<br>${esc((a.name || '').slice(0, 18))}</div>`;
+    return `<div class="tile">${inner}${a.url && !a.pending ? `<a href="${esc(a.url)}" target="_blank" rel="noopener" aria-label="${esc(a.name)} 열기"></a>` : ''}${a.pending ? '' : `<button class="x" data-i="${i}" type="button" aria-label="삭제">×</button>`}</div>`;
+  }).join('');
+}
+
+$('#att').addEventListener('click', async (e) => {
+  const b = e.target.closest('.x');
+  if (!b) return;
+  const a = S.attachments[+b.dataset.i];
+  if (!confirm('이 첨부파일을 삭제할까요? (구글드라이브 휴지통으로 이동)')) return;
+  try {
+    await api('removeAttachment', a.id);
+    S.attachments.splice(S.attachments.indexOf(a), 1); renderAtt(); markDirty();
+  } catch (err) { toast('삭제 실패: ' + errMsg(err), 5000); }
+});
+
+function readDataUrl(file) {
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+}
+function loadImg(url) {
+  return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+}
+
+function stamp() {
+  const d = new Date();
+  return ymd(d).replace(/-/g, '') + '_' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()) + '_' + Math.random().toString(36).slice(2, 5);
+}
+
+async function toPayload(file) {
+  if (isType(file.type, 'image') && !/gif|svg/.test(file.type)) {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await loadImg(url);
+      const max = 2000, k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      const dataUrl = c.toDataURL('image/jpeg', 0.88);
+      return { name: 'IMG_' + stamp() + '.jpg', mimeType: 'image/jpeg', data: dataUrl.split(',')[1], preview: dataUrl };
+    } finally { URL.revokeObjectURL(url); }
+  }
+  if (file.size > MAX_VIDEO) throw new Error('20MB보다 큰 파일입니다 (' + Math.round(file.size / 1048576) + 'MB). 주요 장면을 캡처한 사진으로 올려주세요');
+  const dataUrl = await readDataUrl(file);
+  const ext = (file.name.match(/\.[A-Za-z0-9]+$/) || [''])[0];
+  return { name: (isType(file.type, 'video') ? 'VID_' : 'FILE_') + stamp() + ext, mimeType: file.type || 'application/octet-stream', data: dataUrl.split(',')[1] };
+}
+
+async function addFiles(files) {
+  for (const f of files) {
+    const tile = { name: f.name, mimeType: f.type, pending: true };
+    S.attachments.push(tile); renderAtt();
+    try {
+      const p = await toPayload(f);
+      const info = await api('uploadAttachment', S.id, { name: p.name, mimeType: p.mimeType, data: p.data });
+      Object.assign(tile, info, { pending: false, preview: p.preview });
+      markDirty();
+    } catch (e) {
+      S.attachments.splice(S.attachments.indexOf(tile), 1);
+      toast('업로드 실패: ' + errMsg(e), 6000);
+    }
+    renderAtt();
+  }
+}
+['#camIn', '#galIn'].forEach((s) => $(s).addEventListener('change', (e) => { addFiles([...e.target.files]); e.target.value = ''; }));
+
+/* ───────────── 목록 ───────────── */
+let searchT;
+$('#search').addEventListener('input', () => { clearTimeout(searchT); searchT = setTimeout(loadList, 350); });
+
+async function loadList() {
+  const box = $('#list');
+  box.innerHTML = '<p class="empty">불러오는 중…</p>';
+  try {
+    const rows = await api('listRecords', $('#search').value.trim());
+    S.listLoaded = true;
+    box.innerHTML = rows.length ? rows.map((r) => `
+      <button class="item" data-id="${esc(r.id)}">
+        <div class="t">${esc(r.patientName || '(이름 없음)')} <small>${esc([r.sex, r.age && r.age + '세', r.regNo].filter(Boolean).join(' · '))}</small>
+          <small style="margin-left:auto">${esc(r.date)}${r.nAttach ? ' · 📎' + r.nAttach : ''}</small></div>
+        <div class="s">${esc(r.diagnosis || '-')}</div>
+        <div class="s">${esc(r.mainOp || r.opName || '')}</div>
+      </button>`).join('') : '<p class="empty">기록이 없습니다</p>';
+  } catch (e) { box.innerHTML = '<p class="empty">불러오기 실패: ' + esc(errMsg(e)) + '</p>'; }
+}
+
+$('#list').addEventListener('click', async (e) => {
+  const b = e.target.closest('.item');
+  if (!b || !confirmDiscard()) return;
+  b.style.opacity = .5;
+  try {
+    const r = await api('getRecord', b.dataset.id);
+    S.id = r.id; S.saved = true; S.dirty = false; S.attachments = r.attachments || [];
+    setForm(r); renderAtt(); clearDraft(); updateHeader(); showView('v-edit');
+  } catch (err) { toast('불러오기 실패: ' + errMsg(err), 5000); b.style.opacity = 1; }
+});
+
+/* ───────────── 설정 ───────────── */
+function renderLinks() {
+  const L = S.links || {};
+  $('#links').innerHTML = [
+    ['수술기록.xlsx (엑셀 파일)', L.xlsx], ['수술기록 DB (구글 시트 원본)', L.sheet],
+    ['수술기록 폴더', L.folder], ['첨부자료 폴더 (사진·영상)', L.attach],
+  ].filter(([, u]) => u).map(([t, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)} ↗</a>`).join('') || '<p class="muted">링크 없음</p>';
+}
+$('#exportBtn').addEventListener('click', async () => {
+  const b = $('#exportBtn'); b.disabled = true; b.textContent = '만드는 중…';
+  try { S.links = await api('exportNow'); renderLinks(); toast('엑셀 파일을 갱신했습니다'); }
+  catch (e) { toast('실패: ' + errMsg(e), 6000); }
+  finally { b.disabled = false; b.textContent = '엑셀 지금 다시 만들기'; }
+});
+
+window.addEventListener('beforeunload', (e) => { if (S.dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+/* ───────────── 시작 ───────────── */
+function renderConn() {
+  const c = getConf();
+  $('#c-url').value = c.url || '';
+  $('#c-key').value = c.key || '';
+  $('#connState').textContent = DEMO ? '미리보기 모드 (파일로 열림): 저장되지 않습니다.'
+    : hasConf() ? '연결 정보가 저장되어 있습니다.' : '아직 연결되지 않았습니다. 서버 주소와 접속 키를 입력하세요.';
+}
+
+function cleanUrl(u) { return String(u || '').trim(); }
+
+$('#connSave').addEventListener('click', async () => {
+  const url = cleanUrl($('#c-url').value), key = $('#c-key').value.trim();
+  if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(url)) { toast('서버 주소는 https://script.google.com/ 으로 시작하고 /exec 로 끝나야 합니다', 6000); return; }
+  if (key.length < 20) { toast('접속 키를 확인하세요', 4000); return; }
+  const b = $('#connSave'); b.disabled = true; b.textContent = '확인 중…';
+  try {
+    await callServer(url, key, 'ping', []);
+    if (!setConf({ url: url, key: key })) throw new Error('이 브라우저에 저장할 수 없습니다 (개인정보 보호 모드인지 확인)');
+    renderConn(); toast('연결되었습니다');
+    await loadInit();
+  } catch (e) { toast('연결 실패: ' + errMsg(e), 7000); }
+  finally { b.disabled = false; b.textContent = '연결하기'; }
+});
+
+$('#connLink').addEventListener('click', async () => {
+  const c = getConf();
+  if (!c.url || !c.key) { toast('먼저 연결하기를 눌러 연결하세요', 4000); return; }
+  const link = location.origin + location.pathname + '#url=' + encodeURIComponent(c.url) + '&key=' + encodeURIComponent(c.key);
+  try { await navigator.clipboard.writeText(link); toast('복사했습니다. 본인 휴대폰으로 보내서 Safari로 여세요', 5000); }
+  catch (e) { prompt('아래 링크를 복사하세요', link); }
+});
+
+function importHashConf() {
+  if (!location.hash || location.hash.indexOf('key=') < 0) return false;
+  const p = new URLSearchParams(location.hash.slice(1));
+  const url = cleanUrl(p.get('url')), key = (p.get('key') || '').trim();
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { location.hash = ''; }
+  if (!url || !key) return false;
+  if (setConf({ url: url, key: key })) { toast('연결 정보를 저장했습니다', 3000); return true; }
+  toast('연결 정보를 저장할 수 없습니다 (개인정보 보호 모드인지 확인)', 6000);
+  return false;
+}
+
+async function loadInit() {
+  const d = await api('getInit');
+  S.templates = d.templates || []; S.links = d.links || {};
+  renderTemplates(); renderLinks();
+}
+
+window.APP_OK = true;
+(async function init() {
+  importHashConf();
+  renderConn();
+  newForm(true);
+  restoreDraft();
+  if (!DEMO && !hasConf()) {
+    $('#links').innerHTML = '<p class="muted">서버에 연결하면 표시됩니다.</p>';
+    showView('v-set');
+    toast('처음 한 번 서버 주소와 접속 키를 입력하세요', 6000);
+    return;
+  }
+  try { await loadInit(); }
+  catch (e) { toast('초기화 실패: ' + errMsg(e), 8000); }
+})();
+</script>
+</body>
+</html>
