@@ -45,6 +45,21 @@ textarea{resize:vertical;min-height:64px}
 .inwrap input,.inwrap textarea{padding-right:50px}
 .mic{position:absolute;right:6px;top:6px;width:38px;height:38px;border-radius:10px;border:0;background:var(--soft);color:var(--accent);display:grid;place-items:center;cursor:pointer}
 .mic svg{width:20px;height:20px}
+.lang{border:1px solid var(--line);background:var(--card);color:var(--muted);font:inherit;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;min-width:34px;height:30px;padding:0 6px}
+.lang.en{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.inwrap .lang{position:absolute;right:50px;top:10px}
+.inwrap.haslang input,.inwrap.haslang textarea{padding-right:92px}
+.microw{display:flex;gap:8px;align-items:stretch;margin-bottom:8px}
+.microw .bigmic{margin-bottom:0;flex:1}
+.microw .lang{height:56px;min-width:56px;font-size:14px;border-radius:12px}
+.terms{margin-top:8px}
+.terms summary{cursor:pointer;font-size:14px;color:var(--muted);font-weight:600;padding:4px 0}
+.termrow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.termrow:last-child{border-bottom:0}
+.termrow .t{flex:1;min-width:0;cursor:pointer}
+.termrow .t b{font-weight:500}
+.termrow .t span{color:var(--accent)}
+.termform{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .mic.on{background:var(--rec);color:#fff;animation:pulse 1.2s infinite}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(224,49,43,.45)}50%{box-shadow:0 0 0 8px rgba(224,49,43,0)}}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -104,7 +119,7 @@ ul.tips li{margin-bottom:6px}
 <header>
   <h1 id="title">새 수술기록</h1>
   <span class="pill" id="status" hidden></span>
-  <span class="pill" title="화면 코드 버전">v8</span>
+  <span class="pill" title="화면 코드 버전">v9</span>
 </header>
 
 <main>
@@ -112,7 +127,10 @@ ul.tips li{margin-bottom:6px}
   <section class="view on" id="v-edit">
     <div class="card quick">
       <h2>빠른 음성 입력</h2>
-      <button class="bigmic" id="quickMic" data-for="quick" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg><span id="quickMicLabel">눌러서 말하기</span></button>
+      <div class="microw">
+        <button class="bigmic" id="quickMic" data-for="quick" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg><span id="quickMicLabel">눌러서 말하기</span></button>
+        <button class="lang" data-lang-for="quick" type="button" aria-label="받아쓰기 언어 바꾸기">한</button>
+      </div>
       <textarea id="quick" placeholder="예) 환자명 홍길동 등록번호 12345678 남자 65세 진단명 요추관 협착증 수술명 L4-5 후방 감압술 주요 수술 요추 후방 감압술"></textarea>
       <div class="btns">
         <button class="btn primary small" id="parseBtn" type="button">항목에 채우기</button>
@@ -196,6 +214,22 @@ ul.tips li{margin-bottom:6px}
     <div class="btns" style="margin:0 0 12px"><button class="btn primary" id="tplNew" type="button">+ 새 상용문구</button></div>
     <div id="tplList"></div>
     <p class="hint">주요 수술마다 수술과정을 정리해 두면, 기록할 때 불러와서 고치기만 하면 됩니다. 환자마다 바뀌는 곳은 [ ] 로 표시해 두면 찾기 쉽습니다.</p>
+
+    <div class="card" style="margin-top:16px">
+      <h2>용어사전 (영어 용어 자동 바꾸기)</h2>
+      <p class="hint" style="margin:0 0 10px">한국어로 받아쓸 때 영어 용어가 한글로 적히면(예: 라미넥토미), 여기 등록한 대로 자동으로 바뀝니다(→ laminectomy). 띄어쓰기는 달라도 됩니다.</p>
+      <input type="hidden" id="termId">
+      <div class="termform">
+        <input id="termFrom" placeholder="들리는 말 (예: 라미넥토미)" autocomplete="off">
+        <input id="termTo" placeholder="바꿀 말 (예: laminectomy)" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="btns">
+        <button class="btn primary small" id="termSave" type="button">추가</button>
+        <button class="btn small" id="termCancel" type="button" style="display:none">취소</button>
+        <button class="btn danger small" id="termDel" type="button" style="display:none">삭제</button>
+      </div>
+      <details class="terms" id="termBox"><summary id="termSum">등록된 용어</summary><div id="termList"></div></details>
+    </div>
   </section>
 
   <!-- ─────────── 설정 ─────────── -->
@@ -277,7 +311,7 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const MIC_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg>';
 const FIELDS = ['date', 'regNo', 'patientName', 'sex', 'age', 'diagnosis', 'opName', 'mainOp', 'procedure', 'notes'];
 const DRAFT_KEY = 'opnote.draft.v1';
-const S = { id: null, saved: false, dirty: false, attachments: [], templates: [], links: {}, listLoaded: false };
+const S = { id: null, saved: false, dirty: false, attachments: [], templates: [], terms: [], links: {}, listLoaded: false };
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const errMsg = (e) => (e && e.message) ? e.message : String(e);
@@ -346,8 +380,11 @@ const MOCK = (() => {
     { id: 'T2', name: '(예시) 요추 후방 감압술 Lumbar posterior decompression', content: '1. Under general anesthesia, the patient was placed in the prone position.\n2. A midline skin incision was made over L[ ]-L[ ].' },
   ];
   const links = { folder: '#', sheet: '#', xlsx: '#', attach: '#' };
+  let terms = [{ id: 'W1', from: '라미넥토미', to: 'laminectomy' }, { id: 'W2', from: '디컴프레션', to: 'decompression' }];
   return {
-    getInit: () => ({ templates: tpls, links }),
+    getInit: () => ({ templates: tpls, terms, links }),
+    saveTerm: (t) => { if (t.id) terms = terms.map((x) => x.id === t.id ? t : x); else terms.push({ ...t, id: 'W' + Date.now() }); return { terms }; },
+    deleteTerm: (id) => { terms = terms.filter((x) => x.id !== id); return { terms }; },
     listRecords: (q) => recs.filter((r) => !q || JSON.stringify(r).includes(q)).map((r) => ({ ...r, nAttach: 0 })),
     getRecord: (id) => ({ ...recs.find((r) => r.id === id), attachments: [] }),
     saveRecord: (r) => { const i = recs.findIndex((x) => x.id === r.id); i >= 0 ? (recs[i] = r) : recs.push(r); return { id: r.id, attachments: S.attachments, warning: '' }; },
@@ -414,6 +451,13 @@ function confirmDiscard() {
 }
 
 $$('[data-k]').forEach((el) => el.addEventListener('input', () => { markDirty(); autoGrow(el); }));
+['diagnosis', 'opName', 'mainOp', 'procedure', 'notes'].forEach((k) => {
+  const el = $('#f-' + k);
+  el.addEventListener('change', () => {
+    const v = applyTerms(el.value);
+    if (v !== el.value) { el.value = v; autoGrow(el); markDirty(); toast('용어사전대로 영어 용어를 바꿨습니다', 1800); }
+  });
+});
 $$('#f-sex button').forEach((b) => b.addEventListener('click', () => {
   setSex(b.classList.contains('on') ? '' : b.dataset.v); markDirty();
 }));
@@ -496,9 +540,73 @@ document.addEventListener('click', (e) => {
 
 function spokenPunct(t) {
   return t.replace(/\s*(줄\s?바꿈|다음\s?줄|새\s?줄|엔터)\s*/g, '\n')
+    .replace(/\s*\b(new line|next line|new paragraph)\b\s*/gi, '\n')
     .replace(/\s*마침표\s*/g, '. ')
+    .replace(/\s*\bfull stop\b\s*/gi, '. ')
     .replace(/\s*쉼표\s*/g, ', ')
+    .replace(/\s*\bcomma\b\s*/gi, ', ')
     .replace(/ +\n/g, '\n');
+}
+
+/* ───────────── 받아쓰기 언어 (칸마다 한 / EN) ───────────── */
+const LANG_KEY = 'opnote.lang.v1';
+const LANG_DEFAULT = { 'f-procedure': 'en', tContent: 'en' };
+let LANGS = {};
+try { LANGS = JSON.parse(localStorage.getItem(LANG_KEY)) || {}; } catch (e) { LANGS = {}; }
+
+function langOf(id) { return LANGS[id] || LANG_DEFAULT[id] || 'ko'; }
+
+function paintLang(b) {
+  const en = langOf(b.dataset.langFor) === 'en';
+  b.textContent = en ? 'EN' : '한';
+  b.classList.toggle('en', en);
+  b.title = en ? '영어로 받아쓰기 (누르면 한국어)' : '한국어로 받아쓰기 (누르면 영어)';
+}
+
+function addLangChips(root) {
+  $$('.mic', root || document).forEach((m) => {
+    const id = m.dataset.for;
+    if (!id || id === 'f-regNo') return;
+    const wrap = m.parentElement;
+    if (!wrap || wrap.querySelector('.lang')) return;
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'lang'; b.dataset.langFor = id;
+    b.setAttribute('aria-label', '받아쓰기 언어 바꾸기');
+    wrap.insertBefore(b, m);
+    wrap.classList.add('haslang');
+  });
+  $$('.lang', root || document).forEach(paintLang);
+}
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('.lang');
+  if (!b) return;
+  const id = b.dataset.langFor;
+  if (recBtn && recBtn.dataset.for === id) stopMic();
+  LANGS[id] = langOf(id) === 'en' ? 'ko' : 'en';
+  try { localStorage.setItem(LANG_KEY, JSON.stringify(LANGS)); } catch (err) {}
+  paintLang(b);
+  toast(LANGS[id] === 'en' ? '이 칸은 영어로 받아씁니다' : '이 칸은 한국어로 받아씁니다', 1800);
+});
+
+/* ───────────── 용어사전 적용 ───────────── */
+let TERM_RX = null;
+function escRx(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function buildTerms() {
+  TERM_RX = (S.terms || [])
+    .filter((t) => t.from && String(t.from).replace(/\s+/g, ''))
+    .sort((a, b) => b.from.replace(/\s+/g, '').length - a.from.replace(/\s+/g, '').length)
+    .map((t) => {
+      const chars = Array.from(String(t.from).replace(/\s+/g, ''));
+      return { rx: new RegExp(chars.map(escRx).join('\\s*'), 'gi'), to: String(t.to || '') };
+    });
+}
+function applyTerms(text) {
+  if (!text) return text;
+  if (!TERM_RX) buildTerms();
+  let t = text;
+  TERM_RX.forEach((x) => { t = t.replace(x.rx, x.to); });
+  return t;
 }
 
 function joinText(base, t, multiline) {
@@ -545,7 +653,8 @@ function toggleMic(btn) {
   if (!SR) { blockMic(el, '이 브라우저 미지원'); return; }
   let r;
   try { r = new SR(); } catch (err) { blockMic(el, errMsg(err)); return; }
-  r.lang = 'ko-KR'; r.interimResults = true; r.continuous = true;
+  const isEn = el.id !== 'f-regNo' && langOf(el.id) === 'en';
+  r.lang = isEn ? 'en-US' : 'ko-KR'; r.interimResults = true; r.continuous = true;
   const multiline = el.tagName === 'TEXTAREA';
   const base = el.value;
   let started = false, failed = false;
@@ -555,9 +664,13 @@ function toggleMic(btn) {
   }, 3000);
   r.onresult = (e) => {
     let t = '';
-    for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
+    for (let i = 0; i < e.results.length; i++) {
+      const piece = e.results[i][0].transcript;
+      t += (t && !/\s$/.test(t) && !/^\s/.test(piece)) ? ' ' + piece : piece;
+    }
     t = multiline ? spokenPunct(t).trim() : t.trim();
     if (el.id === 'f-regNo') t = t.replace(/[\s-]/g, '');
+    else t = applyTerms(t);
     el.value = el.id === 'f-regNo' ? t : joinText(base, t, multiline);
     autoGrow(el);
     if (el.dataset.k) markDirty();
@@ -651,8 +764,9 @@ function parseQuick(text) {
 
 $('#parseBtn').addEventListener('click', () => {
   stopMic();
-  const text = $('#quick').value.trim();
+  const text = applyTerms($('#quick').value.trim());
   if (!text) { toast('먼저 말하거나 입력하세요'); return; }
+  $('#quick').value = text;
   const p = parseQuick(text);
   const keys = Object.keys(p);
   if (!keys.length) { toast('항목 이름(환자명, 진단명 등)을 찾지 못했습니다'); return; }
@@ -743,6 +857,53 @@ $('#tplFromProc').addEventListener('click', () => {
 
 $('#tplNew').addEventListener('click', () => editTemplate({ name: '', content: '' }));
 
+/* ───────────── 용어사전 편집 ───────────── */
+function setTerms(list) {
+  S.terms = list || [];
+  TERM_RX = null;
+  renderTerms();
+}
+function renderTerms() {
+  $('#termSum').textContent = '등록된 용어 ' + S.terms.length + '개 (눌러서 보기)';
+  $('#termList').innerHTML = S.terms.length
+    ? S.terms.map((t) => `<div class="termrow"><div class="t" data-id="${esc(t.id)}"><b>${esc(t.from)}</b> → <span>${esc(t.to)}</span></div></div>`).join('')
+    : '<p class="empty">등록된 용어가 없습니다</p>';
+}
+function termFormReset() {
+  $('#termId').value = ''; $('#termFrom').value = ''; $('#termTo').value = '';
+  $('#termSave').textContent = '추가';
+  $('#termCancel').style.display = 'none'; $('#termDel').style.display = 'none';
+}
+$('#termList').addEventListener('click', (e) => {
+  const r = e.target.closest('.t');
+  if (!r) return;
+  const t = S.terms.find((x) => x.id === r.dataset.id);
+  if (!t) return;
+  $('#termId').value = t.id; $('#termFrom').value = t.from; $('#termTo').value = t.to;
+  $('#termSave').textContent = '수정 저장';
+  $('#termCancel').style.display = ''; $('#termDel').style.display = '';
+  $('#termFrom').scrollIntoView({ block: 'center' });
+});
+$('#termCancel').addEventListener('click', termFormReset);
+$('#termSave').addEventListener('click', async () => {
+  const t = { id: $('#termId').value || '', from: $('#termFrom').value.trim(), to: $('#termTo').value.trim() };
+  if (!t.from) { toast('들리는 말을 입력하세요'); return; }
+  if (!t.id) {
+    const dup = S.terms.find((x) => x.from.replace(/\s+/g, '') === t.from.replace(/\s+/g, ''));
+    if (dup) t.id = dup.id;
+  }
+  const b = $('#termSave'); b.disabled = true;
+  try { const r = await api('saveTerm', t); setTerms(r.terms); termFormReset(); toast('용어를 저장했습니다'); }
+  catch (err) { toast('저장 실패: ' + errMsg(err), 5000); }
+  finally { b.disabled = false; }
+});
+$('#termDel').addEventListener('click', async () => {
+  const id = $('#termId').value;
+  if (!id || !confirm('이 용어를 삭제할까요?')) return;
+  try { const r = await api('deleteTerm', id); setTerms(r.terms); termFormReset(); toast('삭제했습니다'); }
+  catch (err) { toast('삭제 실패: ' + errMsg(err), 5000); }
+});
+
 function renderTemplates() {
   $('#tplNames').innerHTML = S.templates.map((t) => `<option value="${esc(t.name.replace('(예시) ', ''))}">`).join('');
   $('#tplList').innerHTML = S.templates.length
@@ -783,7 +944,7 @@ function editTemplate(t, updatingExisting) {
 }
 
 /* ───────────── 모달 ───────────── */
-function openModal(html) { $('#sheet').innerHTML = html; $('#modal').classList.add('on'); }
+function openModal(html) { $('#sheet').innerHTML = html; addLangChips($('#sheet')); $('#modal').classList.add('on'); }
 function closeModal() { $('#modal').classList.remove('on'); $('#sheet').innerHTML = ''; }
 $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal') { stopMic(); closeModal(); } });
 
@@ -996,12 +1157,16 @@ async function loadInit() {
   const d = await api('getInit');
   S.templates = d.templates || []; S.links = d.links || {};
   renderTemplates(); renderLinks();
+  if (Array.isArray(d.terms)) setTerms(d.terms);
+  else $('#termSum').textContent = '용어사전을 쓰려면 Apps Script에 새 Code.gs를 붙여넣고 새 버전으로 배포하세요';
 }
 
 window.APP_OK = true;
 (async function init() {
   importHashConf();
   renderConn();
+  addLangChips();
+  renderTerms();
   newForm(true);
   restoreDraft();
   if (!DEMO && !hasConf()) {
